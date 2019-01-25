@@ -102,7 +102,7 @@ class Trimepay
         if ($type === 'WEPAY_JSAPI'){
             $result['code'] = 0;
             $result['data'] = "http://cashier.hlxpay.com/jsapi.html?payData=".base64_encode(json_encode($payData));
-            return json_encode($result);
+            return $result;
         } else {
             $response = $this->post($payData);
             return $response;
