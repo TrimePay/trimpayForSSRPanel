@@ -59,7 +59,7 @@ class TrimepayController extends Controller
             Log::info('Trimepay-POST:回调数据签名错误，可能是非法请求[' . getClientIp() . ']');
             exit();
         } else {
-            var_dump('SUCCESS');
+            echo('SUCCESS');
         }
         switch ($data['payStatus']) {
             case 'SUCCESS':
