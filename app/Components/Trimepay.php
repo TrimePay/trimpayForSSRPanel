@@ -27,6 +27,7 @@ class Trimepay
         //国外
         $this->gatewayUri = 'https://api.trimepay.com/gateway/pay/go';
         $this->refundUri = 'https://api.trimepay.com/gateway/refund/go';
+        $this->preUri = 'https://api.trimepay.com/gateway/pay/pre';
     }
     /**
      * 准备签名
@@ -73,6 +74,8 @@ class Trimepay
     {
         if ($url == '') {
             $url = $this->gatewayUri;
+        } else {
+            $url = $this->preUri;
         }
         $curl = curl_init();
         curl_setopt($curl, CURLOPT_URL, $url);
@@ -86,6 +89,8 @@ class Trimepay
         curl_close($curl);
         return json_decode($data, true);
     }
+
+
     public function pay($type, $tradeNo, $totalFee, $notifyUrl = '', $returnUrl = '')
     {
         $payData = [
@@ -100,9 +105,8 @@ class Trimepay
         $payData['sign'] = $this->sign($signData);
 
         if ($type === 'WEPAY_JSAPI'){
-            $result['code'] = 0;
-            $result['data'] = "http://cashier.hlxpay.com/jsapi.html?payData=".base64_encode(json_encode($payData));
-            return $result;
+            $response = $this->post($payData, $url = 'pre');
+            return $response;
         } else {
             $response = $this->post($payData);
             return $response;
