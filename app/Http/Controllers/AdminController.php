@@ -18,6 +18,7 @@ use App\Http\Models\SsGroup;
 use App\Http\Models\SsGroupNode;
 use App\Http\Models\SsNode;
 use App\Http\Models\SsNodeInfo;
+use App\Http\Models\SsNodeIp;
 use App\Http\Models\SsNodeLabel;
 use App\Http\Models\SsNodeOnlineLog;
 use App\Http\Models\SsNodeTrafficDaily;
@@ -538,8 +539,7 @@ class AdminController extends Controller
         $nodeList = $query->orderBy('status', 'desc')->orderBy('id', 'asc')->paginate(15)->appends($request->except('page'));
         foreach ($nodeList as &$node) {
             // 在线人数
-            $last_log_time = time() - 600; // 10分钟内
-            $online_log = SsNodeOnlineLog::query()->where('node_id', $node->id)->where('log_time', '>=', $last_log_time)->orderBy('id', 'desc')->first();
+            $online_log = SsNodeOnlineLog::query()->where('node_id', $node->id)->where('log_time', '>=', strtotime("-5 minutes"))->orderBy('id', 'desc')->first();
             $node->online_users = empty($online_log) ? 0 : $online_log->online_user;
 
             // 已产生流量
@@ -549,6 +549,7 @@ class AdminController extends Controller
             // 负载（10分钟以内）
             $node_info = SsNodeInfo::query()->where('node_id', $node->id)->where('log_time', '>=', strtotime("-10 minutes"))->orderBy('id', 'desc')->first();
             $node->load = empty($node_info) || empty($node_info->load) ? '宕机' : $node_info->load;
+            $node->uptime = empty($online_log) ? 0 : seconds2time($node_info->uptime);
         }
 
         $view['nodeList'] = $nodeList;
@@ -606,6 +607,7 @@ class AdminController extends Controller
                 $ssNode->monitor_url = $request->get('monitor_url') ? $request->get('monitor_url') : '';
                 $ssNode->is_subscribe = intval($request->get('is_subscribe'));
                 $ssNode->is_nat = intval($request->get('is_nat'));
+                $ssNode->is_udp = intval($request->get('is_udp'));
                 $ssNode->ssh_port = $request->get('ssh_port') ? intval($request->get('ssh_port')) : 22;
                 $ssNode->is_tcp_check = intval($request->get('is_tcp_check'));
                 $ssNode->compatible = intval($request->get('type')) == 2 ? 0 : (intval($request->get('is_nat')) ? 0 : intval($request->get('compatible')));
@@ -723,6 +725,7 @@ class AdminController extends Controller
                     'monitor_url'     => $request->get('monitor_url') ? $request->get('monitor_url') : '',
                     'is_subscribe'    => intval($request->get('is_subscribe')),
                     'is_nat'          => intval($request->get('is_nat')),
+                    'is_udp'          => intval($request->get('is_udp')),
                     'ssh_port'        => intval($request->get('ssh_port')),
                     'is_tcp_check'    => intval($request->get('is_tcp_check')),
                     'compatible'      => intval($request->get('type')) == 2 ? 0 : (intval($request->get('is_nat')) ? 0 : intval($request->get('compatible'))),
@@ -2058,7 +2061,6 @@ EOF;
         // 演示环境禁止修改特定配置项
         if (env('APP_DEMO')) {
             if (in_array($name, ['website_url', 'min_rand_score', 'max_rand_score', 'push_bear_send_key', 'push_bear_qrcode', 'youzan_client_id', 'youzan_client_secret', 'kdt_id', 'is_forbid_china', 'trimepay_appid', 'trimepay_appsecret', 'alipay_partner', 'alipay_key', 'alipay_transport', 'alipay_sign_type', 'alipay_private_key', 'alipay_public_key'])) {
-            //if (in_array($name, ['website_url', 'min_rand_score', 'max_rand_score', 'push_bear_send_key', 'push_bear_qrcode', 'youzan_client_id', 'youzan_client_secret', 'kdt_id', 'is_forbid_china', 'alipay_partner', 'alipay_key', 'alipay_transport', 'alipay_sign_type', 'alipay_private_key', 'alipay_public_key'])) {
                 return Response::json(['status' => 'fail', 'data' => '', 'message' => '演示环境禁止修改该配置']);
             }
         }
@@ -2073,18 +2075,14 @@ EOF;
             $value = intval($value) / 100;
         }
 
-        // 用有赞云支付不可用AliPay
+        // 用有赞云支付不可用TrimePay支付和AliPay
         if (in_array($name, ['is_youzan']) && $name) {
             $is_trimepay = Config::query()->where('name', 'is_trimepay')->first();
             if ($is_trimepay->value) {
                 return Response::json(['status' => 'fail', 'data' => '', 'message' => '已经在使用【TrimePay支付】']);
             }
-          
-            $is_alipay = Config::query()->where('name', 'is_alipay')->first();
-            if ($is_alipay->value) {
-                return Response::json(['status' => 'fail', 'data' => '', 'message' => '已经在使用【AliPay支付】']);
-            }
         }
+	    
         // 用TrimePay支付不可用有赞云支付和AliPay
         if (in_array($name, ['is_trimepay']) && $name) {
             $is_youzan = Config::query()->where('name', 'is_youzan')->first();
@@ -2096,15 +2094,15 @@ EOF;
                 return Response::json(['status' => 'fail', 'data' => '', 'message' => '已经在使用【AliPay支付】']);
             }
         }
-
-        // 用AliPay支付不可用有赞云支付
+	    
+        // 用AliPay支付不可用有赞云支付和TrimePay
         if (in_array($name, ['is_alipay']) && $name) {
             $is_youzan = Config::query()->where('name', 'is_youzan')->first();
             if ($is_youzan->value) {
                 return Response::json(['status' => 'fail', 'data' => '', 'message' => '已经在使用【有赞云支付】']);
             }
-            
-            $is_trimepay = Config::query()->where('name', 'is_trimepay')->first();
+		
+	    $is_trimepay = Config::query()->where('name', 'is_trimepay')->first();
             if ($is_trimepay->value) {
                 return Response::json(['status' => 'fail', 'data' => '', 'message' => '已经在使用【TrimePay支付】']);
             }
@@ -2198,7 +2196,7 @@ EOF;
         $apply = ReferralApply::query()->with(['user'])->where('id', $id)->first();
         if ($apply && $apply->link_logs) {
             $link_logs = explode(',', $apply->link_logs);
-            $list = ReferralLog::query()->with(['user', 'order.goods'])->whereIn('id', $link_logs)->paginate(15);
+            $list = ReferralLog::query()->with(['user', 'order.goods'])->whereIn('id', $link_logs)->paginate(15)->appends($request->except('page'));
         }
 
         $view['info'] = $apply;
@@ -2244,7 +2242,7 @@ EOF;
             $query->where('status', $status);
         }
 
-        $view['orderList'] = $query->paginate(15);
+        $view['orderList'] = $query->paginate(15)->appends($request->except('page'));
 
         return Response::view('admin.orderList', $view);
     }
@@ -2331,7 +2329,7 @@ EOF;
             });
         }
 
-        $view['list'] = $query->paginate(15);
+        $view['list'] = $query->paginate(15)->appends($request->except('page'));
 
         return Response::view('admin.userBalanceLogList', $view);
     }
@@ -2349,7 +2347,7 @@ EOF;
             });
         }
 
-        $view['list'] = $query->paginate(15);
+        $view['list'] = $query->paginate(15)->appends($request->except('page'));
 
         return Response::view('admin.userBanLogList', $view);
     }
@@ -2367,7 +2365,7 @@ EOF;
             });
         }
 
-        $view['list'] = $query->paginate(15);
+        $view['list'] = $query->paginate(15)->appends($request->except('page'));
 
         return Response::view('admin.userTrafficLogList', $view);
     }
@@ -2397,9 +2395,58 @@ EOF;
             $query->where('status', intval($status));
         }
 
-        $view['list'] = $query->paginate(15);
+        $view['list'] = $query->paginate(15)->appends($request->except('page'));
 
         return Response::view('admin.userRebateList', $view);
+    }
+
+    // 用户在线IP记录
+    public function userOnlineIPList(Request $request)
+    {
+        $username = trim($request->get('username'));
+        $status = $request->get('status');
+        $port = intval($request->get('port'));
+        $wechat = trim($request->get('wechat'));
+        $qq = trim($request->get('qq'));
+        $enable = intval($request->get('enable'));
+
+        $query = User::query();
+
+        if ($username) {
+            $query->where('username', 'like', '%' . $username . '%');
+        }
+
+        if ($status != '') {
+            $query->where('status', intval($status));
+        }
+
+        if (!empty($wechat)) {
+            $query->where('wechat', 'like', '%' . $wechat . '%');
+        }
+
+        if (!empty($qq)) {
+            $query->where('qq', 'like', '%' . $qq . '%');
+        }
+
+        if (!empty($port)) {
+            $query->where('port', intval($port));
+        }
+
+        if ($enable != '') {
+            $query->where('enable', intval($enable));
+        }
+
+        $userList = $query->paginate(15)->appends($request->except('page'));
+        if (!$userList->isEmpty()) {
+            foreach ($userList as &$user) {
+                // 最近10条在线IP记录，如果后端设置为60秒上报一次，则为10分钟内的在线IP
+                $user->onlineIPList = SsNodeIp::query()->with(['node', 'user'])->where('type', 'tcp')->where('port', $user->port)->where('created_at', '>=', strtotime("-10 minutes"))->orderBy('id', 'desc')->limit(10)->get();
+            }
+        }
+
+        $view['userList'] = $userList;
+
+        return Response::view('admin.userOnlineIPList', $view);
     }
 
     // 转换成某个用户的身份
@@ -2422,7 +2469,7 @@ EOF;
     // 标签列表
     public function labelList(Request $request)
     {
-        $labelList = Label::query()->paginate(15);
+        $labelList = Label::query()->paginate(15)->appends($request->except('page'));
         foreach ($labelList as $label) {
             $label->userCount = UserLabel::query()->where('label_id', $label->id)->groupBy('label_id')->count();
             $label->nodeCount = SsNodeLabel::query()->where('label_id', $label->id)->groupBy('label_id')->count();
@@ -2494,7 +2541,7 @@ EOF;
     // 邮件发送日志列表
     public function emailLog(Request $request)
     {
-        $view['list'] = EmailLog::query()->orderBy('id', 'desc')->paginate(15);
+        $view['list'] = EmailLog::query()->orderBy('id', 'desc')->paginate(15)->appends($request->except('page'));
 
         return Response::view('admin.emailLog', $view);
     }
