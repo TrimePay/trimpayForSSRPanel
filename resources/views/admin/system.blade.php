@@ -43,8 +43,9 @@
                                         <li>
                                             <a href="#tab_8" data-toggle="tab"> 有赞云支付 </a>
                                         </li>
-										<li>
+                                        <li>
                                             <a href="#tab_9" data-toggle="tab"> AliPay </a>
+                                        </li>
                                         </li>
                                         <li>
                                             <a href="#tab_10" data-toggle="tab"> TrimePay支付 </a>
@@ -78,7 +79,7 @@
                                                                         <button class="btn btn-success" type="button" onclick="setWebsiteUrl()">修改</button>
                                                                     </span>
                                                                 </div>
-                                                                <span class="help-block"> 生成重置密码、有赞云支付、AliPay必备，示例：https://www.ssrpanel.com </span>
+                                                                <span class="help-block"> 生成重置密码、有赞云支付、TrimePay支付(Small整理)、AliPay必备，示例：https://www.ssrpanel.com </span>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -349,7 +350,7 @@
                                                                         <button class="btn btn-success" type="button" onclick="setSubscribeMax()">修改</button>
                                                                     </span>
                                                                 </div>
-                                                                <span class="help-block"> 客户端订阅时取得几个节点 </span>
+                                                                <span class="help-block"> 客户端订阅时取得几个节点，为0时返回全部节点 </span>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -358,14 +359,14 @@
                                                             <label for="mix_subscribe" class="col-md-3 control-label">混合订阅</label>
                                                             <div class="col-md-9">
                                                                 <input type="checkbox" class="make-switch" @if($mix_subscribe) checked @endif id="mix_subscribe" data-on-color="success" data-off-color="danger" data-on-text="启用" data-off-text="关闭">
-                                                                <span class="help-block"> 启用后，订阅信息中将包含V2Ray节点信息（Vmess） </span>
+                                                                <span class="help-block"> 启用后，订阅信息中将包含V2Ray节点信息（仅支持Shadowrocket、Quantumult、v2rayN） </span>
                                                             </div>
                                                         </div>
                                                         <div class="col-md-6 col-sm-6 col-xs-12">
                                                             <label for="rand_subscribe" class="col-md-3 control-label">随机订阅</label>
                                                             <div class="col-md-9">
                                                                 <input type="checkbox" class="make-switch" @if($rand_subscribe) checked @endif id="rand_subscribe" data-on-color="success" data-off-color="danger" data-on-text="启用" data-off-text="关闭">
-                                                                <span class="help-block"> 启用后，订阅时将随机返回节点信息，否则按节点排序返回（仅支持Shadowrocket、Quantumult） </span>
+                                                                <span class="help-block"> 启用后，订阅时将随机返回节点信息，否则按节点排序返回 </span>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -961,7 +962,7 @@
                                                 </div>
                                             </form>
                                         </div>
-                                      <div class="tab-pane" id="tab_10">
+                                        <div class="tab-pane" id="tab_10">
                                             <form action="#" method="post" class="form-horizontal">
                                                 <div class="portlet-body">
                                                     <div class="form-group">
@@ -969,7 +970,7 @@
                                                             <label for="is_trimepay" class="col-md-3 control-label">本功能</label>
                                                             <div class="col-md-9">
                                                                 <input type="checkbox" class="make-switch" @if($is_trimepay) checked @endif id="is_trimepay" data-on-color="success" data-off-color="danger" data-on-text="启用" data-off-text="关闭">
-                                                                <span class="help-block"> 请先到 <a href="https://portal.trimepay.com/#/auth/register/408" target="_blank">TrimePay</a> 申请app_id和app_secret </span>
+                                                                <span class="help-block"> 请先到 <a href="https://portal.trimepay.com/#/auth/register/284" target="_blank">TrimePay</a> 申请app_id和app_secret </span>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -1514,8 +1515,8 @@
                 });
             }
         });
-       // 启用、禁用atrimepay
-		$('#is_trimepay').on({
+
+        $('#is_trimepay').on({
             'switchChange.bootstrapSwitch': function(event, state) {
                 var is_trimepay = state ? 1 : 0;
                 $.post("{{url('admin/setConfig')}}", {_token:'{{csrf_token()}}', name:'is_trimepay', value:is_trimepay}, function (ret) {
@@ -1527,6 +1528,7 @@
                 });
             }
         });
+        
         // 启用、禁用alipay
         $('#is_alipay').on({
             'switchChange.bootstrapSwitch': function(event, state) {
@@ -1717,7 +1719,7 @@
                 });
             });
         }
-        // 设置trimepay_appid
+
         function setTrimepayAppId() {
             var trimepay_appid = $("#trimepay_appid").val();
             $.post("{{url('admin/setConfig')}}", {_token:'{{csrf_token()}}', name:'trimepay_appid', value:trimepay_appid}, function (ret) {
@@ -1728,7 +1730,6 @@
                 });
             });
         }
-        // 设置trimepay_appsecret
         function setTrimepayAppSecret() {
             var trimepay_appsecret = $("#trimepay_appsecret").val();
             $.post("{{url('admin/setConfig')}}", {_token:'{{csrf_token()}}', name:'trimepay_appsecret', value:trimepay_appsecret}, function (ret) {
@@ -1739,6 +1740,7 @@
                 });
             });
         }
+        
         // 设置alipay加密方式
         $('#alipay_sign_type').change(function() {
             var alipay_sign_type = $(this).val();
@@ -1751,8 +1753,8 @@
                 });
             });
         });
-		
-		// 设置alipay是否启用SSL验证
+        
+        // 设置alipay是否启用SSL验证
         $('#alipay_transport').change(function() {
             var alipay_transport = $(this).val();
 
@@ -1764,8 +1766,8 @@
                 });
             });
         });
-		
-		//设置alipay的partner
+        
+        //设置alipay的partner
         function setAlipayPartner() {
             var alipay_partner = $("#alipay_partner").val();
 
@@ -1777,9 +1779,9 @@
                 });
             });
         }
-		
-		//设置alipay的key
-		function setAlipayKey() {
+        
+        //设置alipay的key
+        function setAlipayKey() {
             var alipay_key = $("#alipay_key").val();
 
             $.post("{{url('admin/setConfig')}}", {_token:'{{csrf_token()}}', name:'alipay_key', value:alipay_key}, function (ret) {
@@ -1790,9 +1792,9 @@
                 });
             });
         }
-		
-		//设置alipay的私钥
-		function setAlipayPrivateKey() {
+        
+        //设置alipay的私钥
+        function setAlipayPrivateKey() {
             var alipay_private_key = $("#alipay_private_key").val();
 
             $.post("{{url('admin/setConfig')}}", {_token:'{{csrf_token()}}', name:'alipay_private_key', value:alipay_private_key}, function (ret) {
@@ -1803,9 +1805,9 @@
                 });
             });
         }
-		
-		//设置alipay的公钥
-		function setAlipayPublicKey() {
+        
+        //设置alipay的公钥
+        function setAlipayPublicKey() {
             var alipay_public_key = $("#alipay_public_key").val();
 
             $.post("{{url('admin/setConfig')}}", {_token:'{{csrf_token()}}', name:'alipay_public_key', value:alipay_public_key}, function (ret) {
@@ -1816,7 +1818,7 @@
                 });
             });
         }
-		
+        
         // 设置alipay结算币种
         $('#alipay_currency').change(function() {
             var alipay_currency = $(this).val();
