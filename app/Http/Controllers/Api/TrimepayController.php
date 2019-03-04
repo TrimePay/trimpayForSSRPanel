@@ -115,6 +115,7 @@ class TrimepayController extends Controller
                 }
             }
             // 更新支付单
+            $payment->callback_sn = $msg['callbackTradeNo'];//更新Trimepay网关流水号
             $payment->pay_way = $msg['payType'] == 'WEPAY_QR' ? 1 : 2; // 1-微信、2-支付宝
             $payment->status = 1;
             $payment->save();

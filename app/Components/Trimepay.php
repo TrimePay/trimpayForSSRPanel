@@ -74,8 +74,6 @@ class Trimepay
     {
         if ($url == '') {
             $url = $this->gatewayUri;
-        } else {
-            $url = $this->preUri;
         }
         $curl = curl_init();
         curl_setopt($curl, CURLOPT_URL, $url);
@@ -112,9 +110,9 @@ class Trimepay
             return $response;
         }
     }
-    public function refund($merchantTradeNo)
+    public function refund($callback_sn)
     {
-        $params['merchantTradeNo'] = $merchantTradeNo;
+        $params['callbackTradeNo'] = $callback_sn;
         $params['appId'] = $this->appId;
         $prepareSign = $this->prepareSign($params);
         $params['sign'] = $this->sign($prepareSign);
